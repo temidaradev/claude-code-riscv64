@@ -1,0 +1,7 @@
+#!/bin/sh
+# Claude Code (official linux-arm64 build) on riscv64 via qemu-user + binfmt.
+# neoverse-n1: qemu's default "max" CPU emulates pointer auth/SVE and is far slower.
+# DFG off: less JIT code for qemu to translate, which is the dominant startup cost.
+export DISABLE_AUTOUPDATER=1
+export QEMU_CPU="${QEMU_CPU:-neoverse-n1}" BUN_JSC_useDFGJIT="${BUN_JSC_useDFGJIT:-0}"
+exec /opt/claude-native/claude "$@"

@@ -1,0 +1,20 @@
+#!/bin/sh
+# Install or update the official linux-arm64 Claude Code build from the npm registry.
+# Usage: claude-update [version]   (default: latest)
+set -eu
+[ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
+PKG=@anthropic-ai/claude-code-linux-arm64
+V=${1:-latest}
+T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
+curl -fsSL "https://registry.npmjs.org/$PKG/$V" -o "$T/meta.json"
+read -r TARBALL INTEGRITY <<META
+$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1]))["dist"]; print(d["tarball"], d["integrity"])' "$T/meta.json")
+META
+curl -fsSL "$TARBALL" -o "$T/pkg.tgz"
+GOT="sha512-$(openssl dgst -sha512 -binary "$T/pkg.tgz" | base64 -w0)"
+[ "$GOT" = "$INTEGRITY" ] || { echo "integrity mismatch for $TARBALL" >&2; exit 1; }
+tar -xzf "$T/pkg.tgz" -C "$T"
+mkdir -p /opt/claude-native
+install -m 755 "$T/package/claude" /opt/claude-native/claude.new
+mv /opt/claude-native/claude.new /opt/claude-native/claude
+QEMU_CPU=neoverse-n1 /opt/claude-native/claude --version
